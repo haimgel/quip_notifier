@@ -1,0 +1,30 @@
+
+#
+# Access token
+# ============
+# should be generated at
+# https://quip.com/dev/token (OR https://quip-apple.com/dev/token for Apple Quip)
+#
+access_token: 'GET YOUR OWN!'
+
+#
+# API Access URL
+# ==============
+# Should be URL appropriate for your environment. For Apple, it's https://platform.quip-apple.com
+#
+api_base_url: 'https://platform.quip.com'
+
+#
+# Notification sound
+# ==================
+# Override the default sound. Any alert sound name as defined in System Preferences could be used
+#
+notification_sound: 'purr'
+
+#
+# Notify about ANY messages in these important channels. Otherwise, this software will only notify about messages
+# that mention you (or direct messages).
+#
+important_channels:
+  - 'Channel Name 1'
+  - 'Channel Name 2'
