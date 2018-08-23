@@ -23,6 +23,13 @@ It sends Quip notifications to OSX notification center.
  * This app is good enough for me but no more: **this is a quick one-evening project because
    Quip was giving me rage fits, it's nowhere near production quality.**
 
+### TODOs
+
+ * It would be nice to pull all the missed messages once the program re-connects, so 
+   no messages are missed if laptop was closed, offline, etc.
+ * The app should notify if/when it crashes and stops delivering messages.
+ * Find out about token validity. It might expire on me here, and I have no way of knowing when.
+
 ## How to install and use it
 
  * Clone the repo
