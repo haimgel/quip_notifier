@@ -11,23 +11,22 @@ It sends Quip notifications to OSX notification center.
 ### Features
 
  * Notifies about direct messages, mentions, and all messages in threads (channels)
-   that are configured as "important"
- * Configurable sound effect.
+   that are configured as "important".
+ * Delivers all missed messages once the program re-connects, so no messages are missed
+   if laptop was closed, offline, etc.
  * Will re-connect automatically if disconnected.
+ * Configurable sound effect.
 
 ### Caveats
 
- * It will **not** notify about messages that were received when the program was offline.
- * Quip format parsing is pretty rudimentary
- * Requires some knowledge to install and use it (it's a Ruby app)
+ * Quip format parsing is pretty rudimentary.
+ * Requires some knowledge to install and use it (it's a Ruby app).
  * This app is good enough for me but no more: **this is a quick one-evening project because
    Quip was giving me rage fits, it's nowhere near production quality.**
 
 ### TODOs
 
- * It would be nice to pull all the missed messages once the program re-connects, so 
-   no messages are missed if laptop was closed, offline, etc.
- * The app should notify if/when it crashes and stops delivering messages.
+ * The app should notify if/when it crashes, looses connection to Quip for a long time, etc.
  * Find out about token validity. It might expire on me here, and I have no way of knowing when.
 
 ## How to install and use it

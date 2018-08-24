@@ -11,10 +11,11 @@ require 'rest-client'
 require 'terminal-notifier'
 require 'uri'
 require 'yaml'
+require 'yaml/store'
 
 class QuipWs
   attr_reader :websocket_url, :user_id, :logger, :config
-  attr_accessor :ws, :connected, :heartbeat_timer, :last_alive_reply, :users, :threads
+  attr_accessor :ws, :connected, :heartbeat_timer, :last_alive_reply, :users, :threads, :store
 
   HEARTBEAT_TIME = 30
 
@@ -41,12 +42,18 @@ class QuipWs
     config['notification_sound'] = 'default' unless config.include?('notification_sound')
     config['important_channels'] = [] unless config.include?('important_channels')
     config.freeze
+    logger.debug("Configuration loaded: #{config.to_json}")
+    self.store = YAML::Store.new('config/store.yml')
+    self.store.transaction do
+      self.store['last_update'] = Time.now.to_i * 1_000_000 if self.store['last_update'].nil?
+      logger.debug("Last update time loaded: #{store['last_update']}")
+    end
   end
 
-  def quip_get(url)
+  def quip_get(path)
     response = RestClient::Request.execute(
       method: :get,
-      url: url,
+      url: config['api_base_url'] + path,
       headers: { Authorization: "Bearer #{config['access_token']}" }
     )
     JSON.parse(response.body)
@@ -55,7 +62,7 @@ class QuipWs
   def get_user(user_id)
     return users[user_id] if users.include?(user_id)
     begin
-      users[user_id] = quip_get(config['api_base_url'] + '/1/users/' + user_id)
+      users[user_id] = quip_get("/1/users/#{user_id}")
     rescue RestClient::NotFound, RestClient::BadRequest
       nil
     end
@@ -64,15 +71,43 @@ class QuipWs
   def get_thread(thread_id)
     return threads[user_id] if threads.include?(thread_id)
     begin
-      threads[thread_id] = quip_get(config['api_base_url'] + '/1/threads/' + thread_id)['thread']
+      threads[thread_id] = quip_get("/1/threads/#{thread_id}")['thread']
     rescue RestClient::NotFound, RestClient::BadRequest
       nil
     end
   end
 
+  def get_missed_messages(since_usec = 0)
+    # The wonderful Quip API cannot deliver missed websocket messages, does not have
+    # an API endpoint for "all messages for me since this time", so let's do it the hard way.
+    missed_messages = []
+    threads = quip_get('/1/threads/recent')
+    threads.each do |thread_id, thread|
+      logger.debug("Processing missed messages for thread '#{thread['thread'].to_json}'")
+      next if thread['thread']['updated_usec'] < since_usec
+      seen_usec = nil
+      loop do
+        # See: https://quip.com/dev/automation/documentation#messages-get
+        url = "/1/messages/#{thread_id}"
+        url += "?max_created_usec=#{seen_usec-1}" if seen_usec
+        messages = quip_get(url)
+        found_new_message = false
+        messages.each do |message|
+          seen_usec = message['created_usec'] if seen_usec.nil? || seen_usec > message['created_usec']
+          next if message['created_usec'] < since_usec
+          logger.debug("Found missed message: '#{message.to_json}'")
+          missed_messages << {'thread' => thread['thread'], 'message' => message}
+          found_new_message = true
+        end
+        break if !found_new_message || seen_usec < since_usec
+      end
+    end
+    missed_messages.sort_by { |msg| msg['message']['created_usec'] }
+  end
+
   def get_websocket_url
     # See: https://quip.com/dev/automation/documentation#websocket-new
-    reply = quip_get(config['api_base_url'] + '/1/websockets/new')
+    reply = quip_get('/1/websockets/new')
     @websocket_url = reply['url']
     @user_id = reply['user_id']
     logger.debug("Websocket URL: #{websocket_url}")
@@ -95,6 +130,9 @@ class QuipWs
   def on_open
     self.connected = true
     logger.debug('Connection opened')
+    # Show previous messages, if any were received while we were offline
+    last_update = self.store.transaction(true) { self.store['last_update'] }
+    get_missed_messages(last_update + 1).each { |msg| process_message(msg) }
     self.last_alive_reply = Time.now
     self.heartbeat_timer = EM.add_periodic_timer(HEARTBEAT_TIME) do
       ws.send({ type: 'heartbeat' }.to_json) unless ws.nil?
@@ -157,6 +195,9 @@ class QuipWs
 
   def process_message(msg)
     logger.debug("Message received: '#{msg.to_json}'")
+    self.store.transaction do
+      self.store['last_update'] = msg['message']['created_usec']
+    end
     text = format_text(msg['message']['text'])
     sender = get_user(msg['message']['author_id'])
     if sender
@@ -172,7 +213,7 @@ class QuipWs
       logger.info("Important message: thread='#{channel_name}', author='#{sender_name}', text='#{text}'")
       deliver_message_osx(text, channel_name, channel_id, sender_name, sender_userpic)
     end
-    deliver_message_log(text, channel_name, sender_name)
+    deliver_message_log(text, channel_name, sender_name) if config['log_messages']
   end
 
   def deliver_message_osx(text, channel_name, channel_id, sender_name, sender_userpic)
