@@ -186,6 +186,8 @@ class QuipWs
     return false if msg['message']['author_id'] == user_id
     # All direct messages are important
     return true if msg['thread']['thread_class'] == 'two_person_chat'
+    # All messages in multi-person ad-hoc chats are important
+    return true if msg['thread']['thread_class'] == 'group_chat'
     # My mentions are important
     return true if msg['message']['mention_user_ids'].to_a.include?(user_id)
     # Messages in important channels are all important
