@@ -22,9 +22,20 @@ api_base_url: 'https://platform.quip.com'
 notification_sound: 'purr'
 
 #
+# Important channels
+# ==================
 # Notify about ANY messages in these important channels. Otherwise, this software will only notify about messages
 # that mention you (or direct messages).
 #
 important_channels:
   - 'Channel Name 1'
   - 'Channel Name 2'
+
+#
+# Important phrases
+# =================
+# Notify about ANY messages that contain these phrases. A good idea would be to include your name, for example.
+#
+important_phrases:
+  - 'Important Phrase 1'
+  - 'Important Phrase 2'

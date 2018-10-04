@@ -41,6 +41,7 @@ class QuipWs
     config['api_base_url'] = 'https://platform.quip.com' unless config.include?('api_base_url')
     config['notification_sound'] = 'default' unless config.include?('notification_sound')
     config['important_channels'] = [] unless config.include?('important_channels')
+    config['important_phrases'] = [] unless config.include?('important_phrases')
     config.freeze
     logger.debug("Configuration loaded: #{config.to_json}")
     self.store = YAML::Store.new('config/store.yml')
@@ -199,6 +200,8 @@ class QuipWs
     return true if msg['message']['mention_user_ids'].to_a.include?(user_id)
     # Messages in important channels are all important
     return true if config['important_channels'].include?(msg['thread']['title'])
+    # Message contains an important phrase
+    return true if config['important_phrases'].any? { |phrase| msg['message']['text'].include?(phrase) }
     false
   end
 
