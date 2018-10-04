@@ -132,7 +132,13 @@ class QuipWs
     logger.debug('Connection opened')
     # Show previous messages, if any were received while we were offline
     last_update = self.store.transaction(true) { self.store['last_update'] }
-    get_missed_messages(last_update + 1).each { |msg| process_message(msg) }
+    begin
+      get_missed_messages(last_update + 1).each { |msg| process_message(msg) }
+    rescue SocketError,  RestClient::Exceptions::OpenTimeout => e
+      logger.error("Exception '#{e.class}'('#{e.message}') while processing missed messages, closing connection")
+      ws.close
+      return
+    end
     self.last_alive_reply = Time.now
     self.heartbeat_timer = EM.add_periodic_timer(HEARTBEAT_TIME) do
       ws.send({ type: 'heartbeat' }.to_json) unless ws.nil?
