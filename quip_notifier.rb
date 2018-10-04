@@ -169,7 +169,7 @@ class QuipWs
   end
 
   def format_text(text)
-    text.gsub(%r{https://quip.com/(\w+)}) do |url|
+    text.gsub!(%r{https://quip.com/(\w+)}) do |url|
       # Assignments in conditionals are intentional here
       if (user = get_user(Regexp.last_match(1)))
         user['name']
@@ -179,6 +179,7 @@ class QuipWs
         url
       end
     end
+    text.empty? ? '(no message)' : text
   end
 
   def important?(msg)
